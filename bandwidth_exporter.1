@@ -1,0 +1,24 @@
+.TH INFO "1" "April 2017" "bandwidth_exporter" "User Commands"
+.SH NAME
+bandwidth_exporter \- Export bandwidth of an interface to Prometheus
+.SH SYNOPSIS
+.B bandwidth_exporter
+.B -I
+.I interface
+[
+.B -p
+port
+]
+.SH DESCRIPTION
+Monitors the provided interface for IPv4 traffic and exports the packets and bytes transmitted and received for each host on the target subnet.
+.SH OPTIONS
+.TP
+\fB\-I\fR
+the interface to monitor
+.TP
+\fB\-p\fR
+the port to serve the HTTP requests on
+.SH SIGNALS
+.TP
+\fBSIGHUP\fR
+reset all counts to zero

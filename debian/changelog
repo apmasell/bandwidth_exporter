@@ -1,0 +1,5 @@
+bandwidth-exporter (0.1~ppa0) xenial; urgency=medium
+
+  * Initial release
+
+ -- Andre Masella <andre@masella.no-ip.org>  Mon, 10 Apr 2017 18:30:37 -0400

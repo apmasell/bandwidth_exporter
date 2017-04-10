@@ -1,0 +1,11 @@
+[Unit]
+Description=Prometheus Bandwidth Exporter
+After=network.target
+
+[Service]
+StandardInput=socket
+EnvironmentFile=/etc/default/bandwidth_exporter
+ExecStart=/usr/bin/bandwidth_exporter $OPTIONS
+
+[Install]
+WantedBy=multi-user.target
