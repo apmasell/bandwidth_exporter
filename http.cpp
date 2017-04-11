@@ -3,13 +3,15 @@
 #include <memory>
 #include <sstream>
 
-#define VARDEF(varname, help)                                                  \
-  ("# HELP bandwidth_" varname " " help "\n# TYPE bandwidth_" varname          \
-   " counter\n")
+#define VARDEF(varname, help, type)                                            \
+  ("# HELP bandwidth_" varname " " help "\n# TYPE bandwidth_" varname " " type \
+   "\n")
 
 static void write_var(std::stringstream &stream, const char *variable,
-                      const std::string &host, unsigned long value) {
-  stream << "bandwidth_" << variable << "{host=" << host << "} " << value
+                      const std::string &interface, const std::string &host,
+                      unsigned long value) {
+  stream << "bandwidth_" << variable
+         << "{interface=" << interface << ",host=" << host << "} " << value
          << "\n";
 }
 
@@ -21,20 +23,29 @@ static int handler(void *cls, struct MHD_Connection *connection,
   if (0 != strcmp(method, MHD_HTTP_METHOD_GET))
     return MHD_NO;
   std::stringstream response_string;
-  response_string << VARDEF("read_packets", "Packets received from this host.")
-                  << VARDEF("write_packets", "Packets sent to this host.")
-                  << VARDEF("read_bytes",
-                            "Total bytes received from this host.")
-                  << VARDEF("write_bytes", "Total bytes sent to this host.");
+  response_string
+      << VARDEF("online", "Whether a particular interface is online.", "gauge")
+      << VARDEF("read_packets", "Packets received from this host.", "counter")
+      << VARDEF("write_packets", "Packets sent to this host.", "counter")
+      << VARDEF("read_bytes", "Total bytes received from this host.", "counter")
+      << VARDEF("write_bytes", "Total bytes sent to this host.", "counter");
 
-  for (auto it = entries.begin(); it != entries.end(); it++) {
-    write_var(response_string, "read_packets", it->first,
-              it->second.read_packets);
-    write_var(response_string, "write_packets", it->first,
-              it->second.write_packets);
-    write_var(response_string, "read_bytes", it->first, it->second.read_bytes);
-    write_var(response_string, "write_bytes", it->first,
-              it->second.write_bytes);
+  for (auto capture_it = captures.begin(); capture_it != captures.end();
+       capture_it++) {
+    const std::string &interface = (*capture_it)->interface();
+    response_string << "bandwidth_online{interface=" << interface << "} "
+                    << ((*capture_it)->isOnline() ? 1 : 0) << "\n";
+
+    for (auto it = (*capture_it)->begin(); it != (*capture_it)->end(); it++) {
+      write_var(response_string, "read_packets", interface, it->first,
+                it->second.read_packets);
+      write_var(response_string, "write_packets", interface, it->first,
+                it->second.write_packets);
+      write_var(response_string, "read_bytes", interface, it->first,
+                it->second.read_bytes);
+      write_var(response_string, "write_bytes", interface, it->first,
+                it->second.write_bytes);
+    }
   }
 
   std::shared_ptr<MHD_Response> response(

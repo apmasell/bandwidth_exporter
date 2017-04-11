@@ -10,21 +10,24 @@
 
 volatile bool running = true;
 
-std::map<std::string, struct host_stats> entries;
+std::vector<std::shared_ptr<PacketCapture>> captures;
 
 void begin_death(int signum) { running = false; }
 
-void clear_entries(int signum) { entries.clear(); }
+void clear_entries(int signum) {
+  for (auto it = captures.begin(); it != captures.end(); it++) {
+    (*it)->clear();
+  }
+}
 
 int main(int argc, char *const *argv) {
-  const char *interface = nullptr;
   unsigned short port = 9131;
 
   int opt;
   while ((opt = getopt(argc, argv, "I:p:")) != -1) {
     switch (opt) {
     case 'I':
-      interface = optarg;
+      captures.push_back(std::make_shared<PacketCapture>(optarg));
       break;
     case 'p':
       port = atoi(optarg);
@@ -40,13 +43,13 @@ int main(int argc, char *const *argv) {
     std::cerr << "Unexpected argument after options." << std::endl;
     return 1;
   }
-  if (interface == nullptr) {
-    std::cerr << "Network interface must be specified." << std::endl;
+  if (captures.size() == 0) {
+    std::cerr << "At least one network interface must be specified."
+              << std::endl;
     return 1;
   }
 
   HttpServer http(port);
-  PacketCapture capture(interface);
   signal(SIGHUP, clear_entries);
   signal(SIGINT, begin_death);
   signal(SIGTERM, begin_death);
@@ -63,7 +66,10 @@ int main(int argc, char *const *argv) {
     FD_ZERO(&err_fds);
 
     http.prepare(&read_fds, &write_fds, &err_fds, max_fd, min_timeout);
-    capture.prepare(&read_fds, &write_fds, &err_fds, max_fd);
+    for (auto capture = captures.begin(); capture != captures.end();
+         capture++) {
+      (*capture)->prepare(&read_fds, &write_fds, &err_fds, max_fd, min_timeout);
+    }
 
     timeout.tv_sec = min_timeout / 1000LL;
     timeout.tv_usec = min_timeout % 1000LL;
@@ -74,7 +80,10 @@ int main(int argc, char *const *argv) {
       return 1;
     } else if (errno == 0) {
       http.service(&read_fds, &write_fds, &err_fds);
-      capture.service(&read_fds, &write_fds, &err_fds);
+      for (auto capture = captures.begin(); capture != captures.end();
+           capture++) {
+        (*capture)->service(&read_fds, &write_fds, &err_fds);
+      }
     }
   }
   return 0;
