@@ -1,7 +1,8 @@
 #include "bandwidth_exporter.hpp"
 #include <arpa/inet.h>
-#include <netinet/in.h>
+#include <ifaddrs.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <sys/socket.h>
 
 #define RETRY_THRESHOLD 10000
@@ -29,6 +30,22 @@ void PacketCapture::prepare(fd_set *read_fds, fd_set *write_fds,
       net = 0;
       mask = 0;
     }
+    subnets.clear();
+
+    struct ifaddrs *ifaddr;
+    if (getifaddrs(&ifaddr) == 0) {
+      for (auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (iface.compare(ifa->ifa_name) != 0 ||
+            ifa->ifa_addr->sa_family != AF_INET6 || ifa->ifa_addr == NULL ||
+            ifa->ifa_netmask == NULL)
+          continue;
+        subnets.emplace_back(
+            ((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr,
+            ((struct sockaddr_in6 *)ifa->ifa_netmask)->sin6_addr);
+      }
+      freeifaddrs(ifaddr);
+    }
+
     handle = pcap_open_live(iface.c_str(), 100, false, 1000, error_buffer);
     if (handle == nullptr) {
       if (min_timeout == 0 || min_timeout < RETRY_THRESHOLD) {
@@ -79,6 +96,19 @@ void PacketCapture::updateAddress(uint32_t ip, std::string &output) {
   }
 }
 
+void PacketCapture::updateAddress(const struct in6_addr &ip,
+                                  std::string &output) {
+  for (auto it = subnets.begin(); it != subnets.end(); it++) {
+    if (it->match(ip)) {
+      char str[INET6_ADDRSTRLEN];
+      if (inet_ntop(AF_INET6, &ip, str, INET6_ADDRSTRLEN) != nullptr) {
+        output = str;
+      }
+      return;
+    }
+  }
+}
+
 void PacketCapture::service(fd_set *read_fds, fd_set *write_fds,
                             fd_set *err_fds) {
   if (handle == nullptr)
@@ -107,6 +137,9 @@ void PacketCapture::service(fd_set *read_fds, fd_set *write_fds,
     if (ip->ip_v == 4) {
       updateAddress(*(uint32_t *)(&ip->ip_src), source_host);
       updateAddress(*(uint32_t *)(&ip->ip_dst), dest_host);
+    } else if (ip->ip_v == 6) {
+      updateAddress(((struct ip6_hdr *)ip)->ip6_src, source_host);
+      updateAddress(((struct ip6_hdr *)ip)->ip6_dst, dest_host);
     }
     auto bytes = header->caplen - ip_offset - extra;
     struct host_stats &source_stats = entries[source_host];
@@ -128,3 +161,20 @@ PacketCapture::end() const {
 }
 bool PacketCapture::isOnline() const { return handle != nullptr; }
 void PacketCapture::clear() { entries.clear(); }
+
+SubnetInfo6::SubnetInfo6(const struct in6_addr &ip,
+                         const struct in6_addr &mask_)
+    : mask(mask_) {
+  for (auto it = 0; it < 16; it++) {
+    net.s6_addr[it] = ip.s6_addr[it] & mask.s6_addr[it];
+  }
+}
+
+bool SubnetInfo6::match(const struct in6_addr &ip) {
+  for (auto it = 0; it < 16; it++) {
+    if ((ip.s6_addr[it] & mask.s6_addr[it]) != net.s6_addr[it]) {
+      return false;
+    }
+  }
+  return true;
+}

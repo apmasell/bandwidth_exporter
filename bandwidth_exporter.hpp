@@ -2,6 +2,7 @@
 #include <map>
 #include <memory>
 #include <microhttpd.h>
+#include <netinet/in.h>
 #include <pcap.h>
 #include <stdexcept>
 #include <string>
@@ -29,6 +30,16 @@ private:
   struct MHD_Daemon *http_server;
 };
 
+class SubnetInfo6 {
+public:
+  SubnetInfo6(const struct in6_addr &ip, const struct in6_addr &mask);
+  bool match(const struct in6_addr &ip);
+
+private:
+  struct in6_addr net;
+  const struct in6_addr mask;
+};
+
 class PacketCapture {
 public:
   PacketCapture(const char *interface);
@@ -45,6 +56,7 @@ public:
 
 private:
   void updateAddress(uint32_t ip, std::string &output);
+  void updateAddress(const struct in6_addr &ip, std::string &output);
   pcap_t *handle;
   char error_buffer[PCAP_ERRBUF_SIZE];
   size_t ip_offset;
@@ -52,6 +64,7 @@ private:
   uint32_t mask;
   std::string iface;
   std::map<std::string, struct host_stats> entries;
+  std::vector<SubnetInfo6> subnets;
 };
 
 extern std::vector<std::shared_ptr<PacketCapture>> captures;
