@@ -18,7 +18,7 @@ config.*
 configure
 debian/*debhelper*
 debian/*substvars
-debian/bandwidth-exporter
+debian/prometheus-bandwidth-exporter
 debian/files
 debian/tmp/
 depcomp

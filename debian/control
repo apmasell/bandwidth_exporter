@@ -1,4 +1,4 @@
-Source: bandwidth-exporter
+Source: prometheus-bandwidth-exporter
 Section: admin
 Priority: optional
 Maintainer: Andre Masella <andre@masella.name>
@@ -6,7 +6,7 @@ Build-Depends: debhelper (>=9),autotools-dev, libpcap-dev, libmicrohttpd-dev
 Standards-Version: 3.9.6
 Homepage: http://github.com/apmasell/bandwidth_exporter
 
-Package: bandwidth-exporter
+Package: prometheus-bandwidth-exporter
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Export bandwith for Prometheus
