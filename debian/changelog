@@ -1,3 +1,9 @@
+prometheus-bandwidth-exporter (0.1~ppa1) xenial; urgency=medium
+
+  * Fix config and metrics
+
+ -- Andre Masella <andre@masella.name>  Tue, 18 Apr 2017 18:43:00 -0400
+
 prometheus-bandwidth-exporter (0.1~ppa0) xenial; urgency=medium
 
   * Initial release
