@@ -11,7 +11,7 @@ static void write_var(std::stringstream &stream, const char *variable,
                       const std::string &interface, const std::string &host,
                       unsigned long value) {
   stream << "bandwidth_" << variable
-         << "{interface=" << interface << ",host=" << host << "} " << value
+         << "{interface=\"" << interface << "\",host=\"" << host << "\"} " << value
          << "\n";
 }
 
@@ -33,7 +33,7 @@ static int handler(void *cls, struct MHD_Connection *connection,
   for (auto capture_it = captures.begin(); capture_it != captures.end();
        capture_it++) {
     const std::string &interface = (*capture_it)->interface();
-    response_string << "bandwidth_online{interface=" << interface << "} "
+    response_string << "bandwidth_online{interface=\"" << interface << "\"} "
                     << ((*capture_it)->isOnline() ? 1 : 0) << "\n";
 
     for (auto it = (*capture_it)->begin(); it != (*capture_it)->end(); it++) {
