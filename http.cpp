@@ -10,9 +10,8 @@
 static void write_var(std::stringstream &stream, const char *variable,
                       const std::string &interface, const std::string &host,
                       unsigned long value) {
-  stream << "bandwidth_" << variable
-         << "{interface=\"" << interface << "\",host=\"" << host << "\"} " << value
-         << "\n";
+  stream << "bandwidth_" << variable << "{interface=\""
+         << interface << "\",host=\"" << host << "\"} " << value << "\n";
 }
 
 static int handler(void *cls, struct MHD_Connection *connection,
@@ -30,21 +29,20 @@ static int handler(void *cls, struct MHD_Connection *connection,
       << VARDEF("read_bytes", "Total bytes received from this host.", "counter")
       << VARDEF("write_bytes", "Total bytes sent to this host.", "counter");
 
-  for (auto capture_it = captures.begin(); capture_it != captures.end();
-       capture_it++) {
-    const std::string &interface = (*capture_it)->interface();
+  for (auto capture : captures) {
+    const std::string &interface = capture->interface();
     response_string << "bandwidth_online{interface=\"" << interface << "\"} "
-                    << ((*capture_it)->isOnline() ? 1 : 0) << "\n";
+                    << (capture->isOnline() ? 1 : 0) << "\n";
 
-    for (auto it = (*capture_it)->begin(); it != (*capture_it)->end(); it++) {
-      write_var(response_string, "read_packets", interface, it->first,
-                it->second.read_packets);
-      write_var(response_string, "write_packets", interface, it->first,
-                it->second.write_packets);
-      write_var(response_string, "read_bytes", interface, it->first,
-                it->second.read_bytes);
-      write_var(response_string, "write_bytes", interface, it->first,
-                it->second.write_bytes);
+    for (auto stats : *capture) {
+      write_var(response_string, "read_packets", interface, stats.first,
+                stats.second.read_packets);
+      write_var(response_string, "write_packets", interface, stats.first,
+                stats.second.write_packets);
+      write_var(response_string, "read_bytes", interface, stats.first,
+                stats.second.read_bytes);
+      write_var(response_string, "write_bytes", interface, stats.first,
+                stats.second.write_bytes);
     }
   }
 
@@ -65,9 +63,10 @@ HttpServer::HttpServer(unsigned short port) throw(std::runtime_error) {
 }
 HttpServer::~HttpServer() { MHD_stop_daemon(http_server); }
 
-void HttpServer::prepare(
-    fd_set *read_fds, fd_set *write_fds, fd_set *err_fds, int &max_fd,
-    unsigned long long &min_timeout) throw(std::runtime_error) {
+void
+HttpServer::prepare(fd_set *read_fds, fd_set *write_fds, fd_set *err_fds,
+                    int &max_fd,
+                    unsigned long long &min_timeout) throw(std::runtime_error) {
   MHD_socket http_max_fd = 0;
   if (MHD_YES !=
       MHD_get_fdset(http_server, read_fds, write_fds, err_fds, &http_max_fd))

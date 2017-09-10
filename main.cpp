@@ -15,8 +15,8 @@ std::vector<std::shared_ptr<PacketCapture>> captures;
 void begin_death(int signum) { running = false; }
 
 void clear_entries(int signum) {
-  for (auto it = captures.begin(); it != captures.end(); it++) {
-    (*it)->clear();
+  for (auto capture : captures) {
+    capture->clear();
   }
 }
 
@@ -66,9 +66,8 @@ int main(int argc, char *const *argv) {
     FD_ZERO(&err_fds);
 
     http.prepare(&read_fds, &write_fds, &err_fds, max_fd, min_timeout);
-    for (auto capture = captures.begin(); capture != captures.end();
-         capture++) {
-      (*capture)->prepare(&read_fds, &write_fds, &err_fds, max_fd, min_timeout);
+    for (auto capture : captures) {
+      capture->prepare(&read_fds, &write_fds, &err_fds, max_fd, min_timeout);
     }
 
     timeout.tv_sec = min_timeout / 1000LL;
@@ -80,9 +79,8 @@ int main(int argc, char *const *argv) {
       return 1;
     } else if (errno == 0) {
       http.service(&read_fds, &write_fds, &err_fds);
-      for (auto capture = captures.begin(); capture != captures.end();
-           capture++) {
-        (*capture)->service(&read_fds, &write_fds, &err_fds);
+      for (auto capture : captures) {
+        capture->service(&read_fds, &write_fds, &err_fds);
       }
     }
   }
